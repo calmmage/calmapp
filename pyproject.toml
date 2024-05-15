@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "project-name"
+name = "calmapp"
 version = "0.0.1"
 # Template Version: 0.2.4 # update python version because of langchain
 # Add scheduled job example
@@ -16,6 +16,9 @@ pytest = "*"
 # logging
 loguru = "*"
 toml = "*"
+# be wary, langchain-pydantic compatibility: https://python.langchain.com/v0.1/docs/guides/development/pydantic_compatibility/
+pydantic = ">=2"
+pydantic-settings = ">=2"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -24,6 +27,16 @@ tqdm = "*"
 # pandas = "2.1.0"
 black = "*"
 pre-commit = "*"
+aiogram = "*"
+streamlit = "*"
+fastapi = "*"
+openai = "*"
+apscheduler = "*"
+pydub = "*"
+tiktoken = "*"
+aiolimiter = "*"
+langchain-anthropic = "*"
+langchain-openai = "*"
 
 [build-system]
 requires = ["poetry-core"]
