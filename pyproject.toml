@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "calmapp"
-version = "0.0.1"
+version = "0.0.2" # create data dir just in time
 # Template Version: 0.2.4 # update python version because of langchain
 # Add scheduled job example
 description = ""

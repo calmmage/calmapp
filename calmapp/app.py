@@ -48,8 +48,6 @@ class App:
             config = self._load_config()
         if data_dir is not None:
             config.data_dir = Path(data_dir)
-        # make dir
-        config.data_dir.mkdir(parents=True, exist_ok=True)
         self.config = config
         self.db = self._connect_db()
         # self.bot = self._telegram_bot_class(config.telegram_bot, app=self)
@@ -57,6 +55,8 @@ class App:
 
     @property
     def data_dir(self):
+        if not self.config.data_dir.exists():
+            self.config.data_dir.mkdir(parents=True, exist_ok=True)
         return self.config.data_dir
 
     # todo_optional: setter, moving the data to the new dir
