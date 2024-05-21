@@ -1,8 +1,6 @@
 [tool.poetry]
 name = "calmapp"
-version = "0.0.1"
-# Template Version: 0.2.4 # update python version because of langchain
-# Add scheduled job example
+version = "0.1.0" # rework plugins - add skeletons for all plugins
 description = ""
 authors = ["Petr Lavrov <calmmage@gmail.com>"]
 readme = "README.md"
@@ -41,3 +39,9 @@ langchain-openai = "*"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[template]
+version = "0.2.4"  # update python version because of langchain
+url = "https://github.com/calmmage/python-project-template.git"
+author = "Petr Lavrov <petrlavrov@calmmage.com>"
+description = "Calmmage Python project template"

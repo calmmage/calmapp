@@ -1,17 +1,15 @@
+import asyncio
 from collections import defaultdict
 from pathlib import Path
 
-import asyncio
-from typing import Type, Union
+# from bot_lib.plugins import GptPlugin
+from typing import List, Type
+from typing import Union
 
 import loguru
 import mongoengine
 import openai
-from dotenv import load_dotenv
-
-# from apscheduler.triggers.interval import IntervalTrigger
-# from bot_lib.migration_bot_base.core import DatabaseConfig  # , TelegramBotConfig
-from calmapp.app_config import AppConfig, DatabaseConfig
+import typing_extensions
 
 # from bot_lib.migration_bot_base.core.telegram_bot import TelegramBot
 from calmlib.beta.utils import (
@@ -20,11 +18,12 @@ from calmlib.beta.utils import (
     split_and_transcribe_audio,
     Audio,
 )
+from dotenv import load_dotenv
 
-from calmapp.plugins import Plugin, GptPlugin
-
-# from bot_lib.plugins import GptPlugin
-from typing import List, Type
+# from apscheduler.triggers.interval import IntervalTrigger
+# from bot_lib.migration_bot_base.core import DatabaseConfig  # , TelegramBotConfig
+from calmapp.app_config import AppConfig, DatabaseConfig
+from calmapp.plugins import Plugin, available_plugins
 
 # from bot_lib.migration_bot_base.core.app import App as OldApp
 
@@ -40,24 +39,33 @@ class App:
     _app_config_class: Type[AppConfig] = AppConfig
     # _telegram_bot_class: Type[TelegramBot] = TelegramBot
     _database_config_class: Type[DatabaseConfig] = DatabaseConfig
+
     # _telegram_bot_config_class: Type[TelegramBotConfig] = TelegramBotConfig
 
-    def _init_app_base(self, data_dir=None, config: _app_config_class = None):
+    def _init_app_base(self, app_data_path=None, config: _app_config_class = None):
         self.logger = loguru.logger.bind(component=self.__class__.__name__)
         if config is None:
             config = self._load_config()
-        if data_dir is not None:
-            config.data_dir = Path(data_dir)
+        if app_data_path is not None:
+            config.app_data_path = Path(app_data_path)
         # make dir
-        config.data_dir.mkdir(parents=True, exist_ok=True)
         self.config = config
         self.db = self._connect_db()
         # self.bot = self._telegram_bot_class(config.telegram_bot, app=self)
         self.logger.info(f"Loaded config: {self.config}")
 
     @property
+    def app_data_path(self):
+        self.config.app_data_path.mkdir(parents=True, exist_ok=True)
+        return self.config.app_data_path
+
+    @typing_extensions.deprecated(
+        "The `data_dir` property is deprecated; use `app_data_path` instead.",
+        category=DeprecationWarning,
+    )
+    @property
     def data_dir(self):
-        return self.config.data_dir
+        return self.app_data_path
 
     # todo_optional: setter, moving the data to the new dir
 
@@ -176,28 +184,97 @@ class App:
 
     # region bot-lib app base
 
-    name: str = None
-    start_message = "Hello! I am {name}. {description}"
-    help_message = "Help! I need somebody! Help! Not just anybody! Help! You know I need someone! Help!"
-
     def __init__(
         self,
         plugins: List[Type[Plugin]] = None,
-        data_dir: Pathlike = None,
+        app_data_path: Pathlike = None,
         config: _app_config_class = None,
     ):
-        # super().__init__()
-        self._init_app_base(data_dir, config)
+        self._init_app_base(app_data_path, config)
         self._init_old_app(config)
+        self._init_plugins(plugins)
+
+    def _init_plugins(self, plugins: List[Type[Plugin]]):
+        # Initialize plugins from arguments
         if plugins is None:
             plugins = []
-        self.plugins = {plugin.name: plugin() for plugin in plugins}
+        self.plugins = {
+            plugin.name: plugin(app=self, config=self.config) for plugin in plugins
+        }
+
+        # Initialize plugins from flags
+        plugin_flags = {
+            "gpt_engine": self.config.enable_gpt_engine_plugin,
+            "langchain": self.config.enable_langchain_plugin,
+            "light_llm": self.config.enable_light_llm_plugin,
+            "openai": self.config.enable_openai_plugin,
+            "database": self.config.enable_database_plugin,
+            "logging": self.config.enable_logging_plugin,
+            "message_history": self.config.enable_message_history_plugin,
+            "scheduler": self.config.enable_scheduler_plugin,
+            "whisper": self.config.enable_whisper_plugin,
+        }
+        for plugin_key, enabled in plugin_flags.items():
+            if enabled and plugin_key not in self.plugins:
+                plugin_class = available_plugins[plugin_key]
+                self.plugins[plugin_key] = plugin_class(app=self, config=self.config)
+
+    # region plugin properties
+    def get_plugin(self, plugin_name: str):
+        if plugin_name not in self.plugins:
+            raise AttributeError(f"{plugin_name.capitalize()} plugin is not enabled.")
+        return self.plugins[plugin_name]
 
     @property
-    def gpt(self) -> GptPlugin:
-        if "gpt" not in self.plugins:
-            raise AttributeError("GPT plugin is not enabled.")
-        return self.plugins["gpt"]
+    def scheduler(self):
+        return self.get_plugin("scheduler")
+
+    @property
+    def langchain(self):
+        return self.get_plugin("langchain")
+
+    @property
+    def light_llm(self):
+        return self.get_plugin("light_llm")
+
+    @property
+    def openai(self):
+        return self.get_plugin("openai")
+
+    @property
+    def database(self):
+        return self.get_plugin("database")
+
+    @property
+    def logging(self):
+        return self.get_plugin("logging")
+
+    @property
+    def message_history(self):
+        return self.get_plugin("message_history")
+
+    @property
+    def whisper(self):
+        return self.get_plugin("whisper")
+
+    @property
+    def gpt(self):
+        """Get the first available GPT plugin."""
+        gpt_plugins = {"openai", "light_llm", "langchain", "gpt_engine"}
+        for plugin in gpt_plugins:
+            try:
+                return self.get_plugin(plugin)
+            except AttributeError:
+                pass
+        raise AttributeError("None of the GPT plugins are enabled.")
+
+    # endregion
+
+    # region base commands
+
+    name: str = None
+    start_message = "Hello! I am {name}. {description}"
+    help_message = "Help! I need somebody! Help! Not just anybody! Help! You know I need someone! Help!"
 
     @property
     def description(self):
@@ -218,9 +295,9 @@ class App:
 
         return help_message
 
-    hidden_commands = defaultdict(list)
-
     # endregion
+
+    hidden_commands = defaultdict(list)
 
     # region Invoke and run templates
     # enable dummy UI though single entry point
