@@ -18,5 +18,5 @@ if TYPE_CHECKING:
 class LightLLMPlugin(GptPlugin):
     name = "light_llm"
 
-    def __init__(self, app: App, config: AppConfig):
+    def __init__(self, app: "App", config: "AppConfig"):
         super().__init__(app, config)

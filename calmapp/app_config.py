@@ -32,22 +32,20 @@ class AppConfig(BaseSettings):
     openai_api_key: SecretStr = SecretStr("")
 
     # Plugin enable flags
-    enable_gpt_engine_plugin: bool = False
-    enable_langchain_plugin: bool = False
-    enable_light_llm_plugin: bool = False
-    enable_openai_plugin: bool = False
-    enable_database_plugin: bool = False
-    enable_logging_plugin: bool = False
-    enable_message_history_plugin: bool = False
-    enable_scheduler_plugin: bool = False
-    enable_whisper_plugin: bool = False
+    enable_gpt_engine: bool = False
+    enable_langchain: bool = False
+    enable_light_llm: bool = False
+    enable_openai: bool = False
+    enable_database: bool = False
+    enable_logging: bool = False
+    enable_message_history: bool = False
+    enable_scheduler: bool = False
+    enable_whisper: bool = False
 
     # Other settings
     # todo: deprecate and use whisper plugin instead
     enable_voice_recognition: bool = False
     process_audio_in_parallel: bool = False
-    # todo: deprecate and use scheduler plugin instead
-    enable_scheduler: bool = False
 
     # todo: add extra {APP}_ prefix to all env vars?
     #  will this work?

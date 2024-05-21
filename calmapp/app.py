@@ -2,13 +2,11 @@ import asyncio
 from collections import defaultdict
 from pathlib import Path
 
-# from bot_lib.plugins import GptPlugin
 from typing import List, Type
 from typing import Union
 
 import loguru
 import mongoengine
-import openai
 import typing_extensions
 
 # from bot_lib.migration_bot_base.core.telegram_bot import TelegramBot
@@ -23,10 +21,24 @@ from dotenv import load_dotenv
 # from apscheduler.triggers.interval import IntervalTrigger
 # from bot_lib.migration_bot_base.core import DatabaseConfig  # , TelegramBotConfig
 from calmapp.app_config import AppConfig, DatabaseConfig
-from calmapp.plugins import Plugin, available_plugins
+
+from typing import TYPE_CHECKING
 
 # from bot_lib.migration_bot_base.core.app import App as OldApp
-
+if TYPE_CHECKING:
+    from calmapp.plugins import (
+        Plugin,
+        MessageHistoryPlugin,
+        WhisperPlugin,
+        SchedulerPlugin,
+        OpenAIPlugin,
+        DatabasePlugin,
+        LangChainPlugin,
+        GptEnginePlugin,
+        GptPlugin,
+        LightLLMPlugin,
+        LoggingPlugin,
+    )
 
 Pathlike = Union[str, Path]
 
@@ -59,11 +71,10 @@ class App:
         self.config.app_data_path.mkdir(parents=True, exist_ok=True)
         return self.config.app_data_path
 
+    @property
     @typing_extensions.deprecated(
         "The `data_dir` property is deprecated; use `app_data_path` instead.",
-        category=DeprecationWarning,
     )
-    @property
     def data_dir(self):
         return self.app_data_path
 
@@ -96,51 +107,10 @@ class App:
 
     # region old App
 
-    def _init_old_app(self, config: AppConfig = None):
-        # super().__init__(data_dir=data_dir, config=config)
-        if self.config.enable_openai_api:
-            # deprecate this
-            self.logger.warning("OpenAI API is deprecated, use GPT Engine instead")
-            self._init_openai()
-
-        if self.config.enable_voice_recognition:
-            self.logger.info("Initializing voice recognition")
-            self._init_voice_recognition()
-
-        # todo: move to plugins - scheduler
-        self._scheduler = None
-        if self.config.enable_scheduler:
-            self.logger.info("Initializing scheduler")
-            from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
-            # self._init_scheduler()
-            self._scheduler = AsyncIOScheduler()
-
-        # todo: move to plugins - gpt engine
-        self.gpt_engine = None
-        if self.config.enable_gpt_engine:
-            self.logger.info("Initializing GPT Engine")
-            from gpt_kit.gpt_engine.gpt_engine import GptEngine
-
-            self.gpt_engine = GptEngine(config.gpt_engine, app=self)
-            # self._init_gpt_engine()
-
-    def _init_openai(self):
-        openai.api_key = self.config.openai_api_key.get_secret_value()
-
-    # def _init_scheduler(self):
-    #     self._scheduler = AsyncIOScheduler()
-
     # ------------------ GPT Engine ------------------ #
 
     # ------------------ Audio ------------------ #
-
-    def _init_voice_recognition(self):
-        # todo: check that codecs are installed
-        #  install if necessary
-        # todo: check that ffmpeg is installed
-        # todo: check pyrogram token and api_id
-        pass
+    # region Audio
 
     # todo: move to plugins - whisper
     async def parse_audio(
@@ -161,16 +131,19 @@ class App:
         )
         return chunks
 
+    # endregion
     # --------------------------------------------- #
 
-    async def _run_with_scheduler(self):
+    async def _run_with_scheduler(self, bot=None):
         # this seems stupid, but this is a tested working way, so i go with it
         # rework sometime later - probably can just start and not gather
-        self._scheduler.start()
-        # await self.bot.run()
-        raise NotImplementedError
+        if bot is None:
+            await self.scheduler.core.start()
+        else:
+            self.scheduler.core.start()
+            await bot.run()
 
-    def run(self):
+    def run(self, bot=None):
         if self.config.enable_scheduler:
             self.logger.info("Running with scheduler")
             asyncio.run(self._run_with_scheduler())
@@ -186,15 +159,14 @@ class App:
 
     def __init__(
         self,
-        plugins: List[Type[Plugin]] = None,
+        plugins: List[Type["Plugin"]] = None,
         app_data_path: Pathlike = None,
         config: _app_config_class = None,
     ):
         self._init_app_base(app_data_path, config)
-        self._init_old_app(config)
         self._init_plugins(plugins)
 
-    def _init_plugins(self, plugins: List[Type[Plugin]]):
+    def _init_plugins(self, plugins: List[Type["Plugin"]]):
         # Initialize plugins from arguments
         if plugins is None:
             plugins = []
@@ -204,61 +176,66 @@ class App:
 
         # Initialize plugins from flags
         plugin_flags = {
-            "gpt_engine": self.config.enable_gpt_engine_plugin,
-            "langchain": self.config.enable_langchain_plugin,
-            "light_llm": self.config.enable_light_llm_plugin,
-            "openai": self.config.enable_openai_plugin,
-            "database": self.config.enable_database_plugin,
-            "logging": self.config.enable_logging_plugin,
-            "message_history": self.config.enable_message_history_plugin,
-            "scheduler": self.config.enable_scheduler_plugin,
-            "whisper": self.config.enable_whisper_plugin,
+            "gpt_engine": self.config.enable_gpt_engine,
+            "langchain": self.config.enable_langchain,
+            "light_llm": self.config.enable_light_llm,
+            "openai": self.config.enable_openai,
+            "database": self.config.enable_database,
+            "logging": self.config.enable_logging,
+            "message_history": self.config.enable_message_history,
+            "scheduler": self.config.enable_scheduler,
+            "whisper": self.config.enable_whisper,
         }
+        from calmapp.plugins import available_plugins
+
         for plugin_key, enabled in plugin_flags.items():
             if enabled and plugin_key not in self.plugins:
                 plugin_class = available_plugins[plugin_key]
                 self.plugins[plugin_key] = plugin_class(app=self, config=self.config)
 
     # region plugin properties
-    def get_plugin(self, plugin_name: str):
-        if plugin_name not in self.plugins:
-            raise AttributeError(f"{plugin_name.capitalize()} plugin is not enabled.")
-        return self.plugins[plugin_name]
+    def get_plugin(self, plugin_key: str) -> "Plugin":
+        if plugin_key not in self.plugins:
+            from calmapp.plugins import available_plugins
+
+            plugin_name = available_plugins[plugin_key].name
+            raise AttributeError(f"{plugin_name} plugin is not enabled.")
+        return self.plugins[plugin_key]
 
     @property
-    def scheduler(self):
+    def scheduler(self) -> "SchedulerPlugin":
         return self.get_plugin("scheduler")
 
     @property
-    def langchain(self):
+    def langchain(self) -> "LangChainPlugin":
         return self.get_plugin("langchain")
 
     @property
-    def light_llm(self):
+    def light_llm(self) -> "LightLLMPlugin":
         return self.get_plugin("light_llm")
 
     @property
-    def openai(self):
+    def openai(self) -> "OpenAIPlugin":
         return self.get_plugin("openai")
 
     @property
-    def database(self):
+    def database(self) -> "DatabasePlugin":
         return self.get_plugin("database")
 
     @property
-    def logging(self):
+    def logging(self) -> "LoggingPlugin":
         return self.get_plugin("logging")
 
     @property
-    def message_history(self):
+    def message_history(self) -> "MessageHistoryPlugin":
         return self.get_plugin("message_history")
 
     @property
-    def whisper(self):
+    def whisper(self) -> "WhisperPlugin":
         return self.get_plugin("whisper")
 
     @property
-    def gpt(self):
+    def gpt(self) -> "GptPlugin":
         """Get the first available GPT plugin."""
         gpt_plugins = {"openai", "light_llm", "langchain", "gpt_engine"}
         for plugin in gpt_plugins:

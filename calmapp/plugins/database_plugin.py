@@ -16,5 +16,5 @@ if TYPE_CHECKING:
 class DatabasePlugin(Plugin):
     name = "database"
 
-    def __init__(self, app: App, config: AppConfig):
+    def __init__(self, app: "App", config: "AppConfig"):
         super().__init__(app, config)

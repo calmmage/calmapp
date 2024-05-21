@@ -1,5 +1,5 @@
 from .app import App
-from .plugins import Plugin, GptPlugin, LangChainPlugin
+from .plugins import Plugin, LangChainPlugin
 from importlib.metadata import PackageNotFoundError
 
 try:

@@ -33,3 +33,8 @@ Add:
 - add unit tests
 - add documentation
 
+# Step 2: Move and integrate old code from 
+
+# Start fleshing out plugins
+
+#

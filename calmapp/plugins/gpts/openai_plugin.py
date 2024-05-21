@@ -17,9 +17,9 @@ if TYPE_CHECKING:
 class OpenAIPlugin(GptPlugin):
     name = "openai"
 
-    def __init__(self, app: App, config: AppConfig):
+    def __init__(self, app: "App", config: "AppConfig"):
         super().__init__(app, config)
-        api_key = config.openai_api_key
+        api_key = config.openai_api_key.get_secret_value()
 
         # todo: use plugin config instead
         if api_key is None:

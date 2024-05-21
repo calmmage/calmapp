@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Dict
+from typing import TYPE_CHECKING, List, Dict, Any
 
 from calmapp.plugins.plugin import Plugin
 from calmlib.utils import get_logger
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class GptPlugin(Plugin):
-    def __init__(self, app: App, config: AppConfig):
+    def __init__(self, app: "App", config: "AppConfig"):
         super().__init__(app, config)
 
     def complete(self, model: str, messages: List[str], **kwargs: Dict) -> str:

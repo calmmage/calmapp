@@ -1,13 +1,9 @@
 from typing import TYPE_CHECKING
 
-from calmapp.plugins.plugin import Plugin
-import os
 from dotenv import load_dotenv
-from calmlib.utils import get_logger
 from .gpt_plugin import GptPlugin
 
-logger = get_logger(__name__)
-# from loguru import logger
+load_dotenv()
 
 if TYPE_CHECKING:
     from calmapp.app import App
@@ -17,5 +13,10 @@ if TYPE_CHECKING:
 class GptEnginePlugin(GptPlugin):
     name = "gpt_engine"
 
-    def __init__(self, app: App, config: AppConfig):
+    def __init__(self, app: "App", config: "AppConfig"):
         super().__init__(app, config)
+
+        from gpt_kit.gpt_engine.gpt_engine import GptEngine
+
+        # todo: sort out this mess, init the gpt engine config properly.. ?
+        self._gpt_engine = GptEngine(app=self)

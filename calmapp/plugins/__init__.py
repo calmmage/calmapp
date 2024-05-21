@@ -1,4 +1,5 @@
 from .plugin import Plugin
+from .gpts.gpt_plugin import GptPlugin
 from .gpts.openai_plugin import OpenAIPlugin
 from .gpts.langchain_plugin import LangChainPlugin
 from .gpts.gpt_engine_plugin import GptEnginePlugin
