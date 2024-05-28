@@ -6,7 +6,6 @@ from typing import List, Type
 from typing import Union
 
 import loguru
-import mongoengine
 import typing_extensions
 
 # from bot_lib.migration_bot_base.core.telegram_bot import TelegramBot
@@ -61,9 +60,13 @@ class App:
         if app_data_path is not None:
             config.app_data_path = Path(app_data_path)
         self.config = config
-        self.db = self._connect_db()
+        # todo: instead of initializing db here, initialize it in the database plugin
         # self.bot = self._telegram_bot_class(config.telegram_bot, app=self)
         self.logger.info(f"Loaded config: {self.config}")
+
+    @property
+    def db(self):
+        return self.database.db
 
     @property
     def app_data_path(self):
@@ -90,17 +93,6 @@ class App:
             **kwargs,
         )
 
-    # todo: move to plugins
-    def _connect_db(self):
-        try:
-            return mongoengine.get_connection("default")
-        except mongoengine.connection.ConnectionFailure:
-            db_config = self.config.database
-            conn_str = db_config.conn_str.get_secret_value()
-            return mongoengine.connect(
-                db=db_config.name,
-                host=conn_str,
-            )
 
     # endregion
 

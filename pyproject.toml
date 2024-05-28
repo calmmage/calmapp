@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "calmapp"
-version = "0.1.1" # rework plugins - add skeletons for all plugins
+version = "0.1.2" # move database connection to the plugin, add private and public database options
 description = ""
 authors = ["Petr Lavrov <calmmage@gmail.com>"]
 readme = "README.md"
@@ -35,6 +35,7 @@ tiktoken = "*"
 aiolimiter = "*"
 langchain-anthropic = "*"
 langchain-openai = "*"
+langchain = "*"
 
 [build-system]
 requires = ["poetry-core"]
