@@ -60,7 +60,6 @@ class App:
             config = self._load_config()
         if app_data_path is not None:
             config.app_data_path = Path(app_data_path)
-        # make dir
         self.config = config
         self.db = self._connect_db()
         # self.bot = self._telegram_bot_class(config.telegram_bot, app=self)
