@@ -1,17 +1,12 @@
+import asyncio
 from collections import defaultdict
 from pathlib import Path
 
-import asyncio
-from typing import Type, Union
+from typing import List, Type
+from typing import Union
 
 import loguru
-import mongoengine
-import openai
-from dotenv import load_dotenv
-
-# from apscheduler.triggers.interval import IntervalTrigger
-# from bot_lib.migration_bot_base.core import DatabaseConfig  # , TelegramBotConfig
-from calmapp.app_config import AppConfig, DatabaseConfig
+import typing_extensions
 
 # from bot_lib.migration_bot_base.core.telegram_bot import TelegramBot
 from calmlib.beta.utils import (
@@ -20,14 +15,29 @@ from calmlib.beta.utils import (
     split_and_transcribe_audio,
     Audio,
 )
+from dotenv import load_dotenv
 
-from calmapp.plugins import Plugin, GptPlugin
+# from apscheduler.triggers.interval import IntervalTrigger
+# from bot_lib.migration_bot_base.core import DatabaseConfig  # , TelegramBotConfig
+from calmapp.app_config import AppConfig, DatabaseConfig
 
-# from bot_lib.plugins import GptPlugin
-from typing import List, Type
+from typing import TYPE_CHECKING
 
 # from bot_lib.migration_bot_base.core.app import App as OldApp
-
+if TYPE_CHECKING:
+    from calmapp.plugins import (
+        Plugin,
+        MessageHistoryPlugin,
+        WhisperPlugin,
+        SchedulerPlugin,
+        OpenAIPlugin,
+        DatabasePlugin,
+        LangChainPlugin,
+        GptEnginePlugin,
+        GptPlugin,
+        LightLLMPlugin,
+        LoggingPlugin,
+    )
 
 Pathlike = Union[str, Path]
 
@@ -40,24 +50,35 @@ class App:
     _app_config_class: Type[AppConfig] = AppConfig
     # _telegram_bot_class: Type[TelegramBot] = TelegramBot
     _database_config_class: Type[DatabaseConfig] = DatabaseConfig
+
     # _telegram_bot_config_class: Type[TelegramBotConfig] = TelegramBotConfig
 
-    def _init_app_base(self, data_dir=None, config: _app_config_class = None):
+    def _init_app_base(self, app_data_path=None, config: _app_config_class = None):
         self.logger = loguru.logger.bind(component=self.__class__.__name__)
         if config is None:
             config = self._load_config()
-        if data_dir is not None:
-            config.data_dir = Path(data_dir)
+        if app_data_path is not None:
+            config.app_data_path = Path(app_data_path)
         self.config = config
-        self.db = self._connect_db()
+        # todo: instead of initializing db here, initialize it in the database plugin
         # self.bot = self._telegram_bot_class(config.telegram_bot, app=self)
         self.logger.info(f"Loaded config: {self.config}")
 
     @property
+    def db(self):
+        return self.database.db
+
+    @property
+    def app_data_path(self):
+        self.config.app_data_path.mkdir(parents=True, exist_ok=True)
+        return self.config.app_data_path
+
+    @property
+    @typing_extensions.deprecated(
+        "The `data_dir` property is deprecated; use `app_data_path` instead.",
+    )
     def data_dir(self):
-        if not self.config.data_dir.exists():
-            self.config.data_dir.mkdir(parents=True, exist_ok=True)
-        return self.config.data_dir
+        return self.app_data_path
 
     # todo_optional: setter, moving the data to the new dir
 
@@ -72,67 +93,15 @@ class App:
             **kwargs,
         )
 
-    # todo: move to plugins
-    def _connect_db(self):
-        try:
-            return mongoengine.get_connection("default")
-        except mongoengine.connection.ConnectionFailure:
-            db_config = self.config.database
-            conn_str = db_config.conn_str.get_secret_value()
-            return mongoengine.connect(
-                db=db_config.name,
-                host=conn_str,
-            )
 
     # endregion
 
     # region old App
 
-    def _init_old_app(self, config: AppConfig = None):
-        # super().__init__(data_dir=data_dir, config=config)
-        if self.config.enable_openai_api:
-            # deprecate this
-            self.logger.warning("OpenAI API is deprecated, use GPT Engine instead")
-            self._init_openai()
-
-        if self.config.enable_voice_recognition:
-            self.logger.info("Initializing voice recognition")
-            self._init_voice_recognition()
-
-        # todo: move to plugins - scheduler
-        self._scheduler = None
-        if self.config.enable_scheduler:
-            self.logger.info("Initializing scheduler")
-            from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
-            # self._init_scheduler()
-            self._scheduler = AsyncIOScheduler()
-
-        # todo: move to plugins - gpt engine
-        self.gpt_engine = None
-        if self.config.enable_gpt_engine:
-            self.logger.info("Initializing GPT Engine")
-            from gpt_kit.gpt_engine.gpt_engine import GptEngine
-
-            self.gpt_engine = GptEngine(config.gpt_engine, app=self)
-            # self._init_gpt_engine()
-
-    def _init_openai(self):
-        openai.api_key = self.config.openai_api_key.get_secret_value()
-
-    # def _init_scheduler(self):
-    #     self._scheduler = AsyncIOScheduler()
-
     # ------------------ GPT Engine ------------------ #
 
     # ------------------ Audio ------------------ #
-
-    def _init_voice_recognition(self):
-        # todo: check that codecs are installed
-        #  install if necessary
-        # todo: check that ffmpeg is installed
-        # todo: check pyrogram token and api_id
-        pass
+    # region Audio
 
     # todo: move to plugins - whisper
     async def parse_audio(
@@ -153,16 +122,19 @@ class App:
         )
         return chunks
 
+    # endregion
     # --------------------------------------------- #
 
-    async def _run_with_scheduler(self):
+    async def _run_with_scheduler(self, bot=None):
         # this seems stupid, but this is a tested working way, so i go with it
         # rework sometime later - probably can just start and not gather
-        self._scheduler.start()
-        # await self.bot.run()
-        raise NotImplementedError
+        if bot is None:
+            await self.scheduler.core.start()
+        else:
+            self.scheduler.core.start()
+            await bot.run()
 
-    def run(self):
+    def run(self, bot=None):
         if self.config.enable_scheduler:
             self.logger.info("Running with scheduler")
             asyncio.run(self._run_with_scheduler())
@@ -176,28 +148,101 @@ class App:
 
     # region bot-lib app base
 
+    def __init__(
+        self,
+        plugins: List[Type["Plugin"]] = None,
+        app_data_path: Pathlike = None,
+        config: _app_config_class = None,
+    ):
+        self._init_app_base(app_data_path, config)
+        self._init_plugins(plugins)
+
+    def _init_plugins(self, plugins: List[Type["Plugin"]]):
+        # Initialize plugins from arguments
+        if plugins is None:
+            plugins = []
+        self.plugins = {
+            plugin.name: plugin(app=self, config=self.config) for plugin in plugins
+        }
+
+        # Initialize plugins from flags
+        plugin_flags = {
+            "gpt_engine": self.config.enable_gpt_engine,
+            "langchain": self.config.enable_langchain,
+            "light_llm": self.config.enable_light_llm,
+            "openai": self.config.enable_openai,
+            "database": self.config.enable_database,
+            "logging": self.config.enable_logging,
+            "message_history": self.config.enable_message_history,
+            "scheduler": self.config.enable_scheduler,
+            "whisper": self.config.enable_whisper,
+        }
+        from calmapp.plugins import available_plugins
+
+        for plugin_key, enabled in plugin_flags.items():
+            if enabled and plugin_key not in self.plugins:
+                plugin_class = available_plugins[plugin_key]
+                self.plugins[plugin_key] = plugin_class(app=self, config=self.config)
+
+    # region plugin properties
+    def get_plugin(self, plugin_key: str) -> "Plugin":
+        if plugin_key not in self.plugins:
+            from calmapp.plugins import available_plugins
+
+            plugin_name = available_plugins[plugin_key].name
+            raise AttributeError(f"{plugin_name} plugin is not enabled.")
+        return self.plugins[plugin_key]
+
+    @property
+    def scheduler(self) -> "SchedulerPlugin":
+        return self.get_plugin("scheduler")
+
+    @property
+    def langchain(self) -> "LangChainPlugin":
+        return self.get_plugin("langchain")
+
+    @property
+    def light_llm(self) -> "LightLLMPlugin":
+        return self.get_plugin("light_llm")
+
+    @property
+    def openai(self) -> "OpenAIPlugin":
+        return self.get_plugin("openai")
+
+    @property
+    def database(self) -> "DatabasePlugin":
+        return self.get_plugin("database")
+
+    @property
+    def logging(self) -> "LoggingPlugin":
+        return self.get_plugin("logging")
+
+    @property
+    def message_history(self) -> "MessageHistoryPlugin":
+        return self.get_plugin("message_history")
+
+    @property
+    def whisper(self) -> "WhisperPlugin":
+        return self.get_plugin("whisper")
+
+    @property
+    def gpt(self) -> "GptPlugin":
+        """Get the first available GPT plugin."""
+        gpt_plugins = {"openai", "light_llm", "langchain", "gpt_engine"}
+        for plugin in gpt_plugins:
+            try:
+                return self.get_plugin(plugin)
+            except AttributeError:
+                pass
+        raise AttributeError("None of the GPT plugins are enabled.")
+
+    # endregion
+
+    # region base commands
+
     name: str = None
     start_message = "Hello! I am {name}. {description}"
     help_message = "Help! I need somebody! Help! Not just anybody! Help! You know I need someone! Help!"
-
-    def __init__(
-        self,
-        plugins: List[Type[Plugin]] = None,
-        data_dir: Pathlike = None,
-        config: _app_config_class = None,
-    ):
-        # super().__init__()
-        self._init_app_base(data_dir, config)
-        self._init_old_app(config)
-        if plugins is None:
-            plugins = []
-        self.plugins = {plugin.name: plugin() for plugin in plugins}
-
-    @property
-    def gpt(self) -> GptPlugin:
-        if "gpt" not in self.plugins:
-            raise AttributeError("GPT plugin is not enabled.")
-        return self.plugins["gpt"]
 
     @property
     def description(self):
@@ -218,9 +263,9 @@ class App:
 
         return help_message
 
-    hidden_commands = defaultdict(list)
-
     # endregion
+
+    hidden_commands = defaultdict(list)
 
     # region Invoke and run templates
     # enable dummy UI though single entry point

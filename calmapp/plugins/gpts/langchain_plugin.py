@@ -1,21 +1,25 @@
 import os
+from typing import TYPE_CHECKING
 
-from calmlib.utils import get_logger
 from dotenv import load_dotenv
-from langchain_anthropic import ChatAnthropic
-from langchain_openai import ChatOpenAI
 
-from .plugin import Plugin
+from .gpt_plugin import GptPlugin
 
 load_dotenv()
+if TYPE_CHECKING:
+    from calmapp.app import App
+    from calmapp.app_config import AppConfig
 
-logger = get_logger(__name__)
 
-
-class LangChainPlugin(Plugin):
+class LangChainPlugin(GptPlugin):
     name = "langchain"
 
-    def __init__(self, api_key: str = None, kind: str = "openai"):
+    def __init__(self, app: "App", config: "AppConfig", kind: str = "openai"):
+        super().__init__(app, config)
+        api_key = config.openai_api_key
+        from langchain_anthropic import ChatAnthropic
+        from langchain_openai import ChatOpenAI
+
         # todo: use plugin config instead
         if api_key is None:
             api_key = os.getenv("OPENAI_API_KEY")
