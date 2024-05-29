@@ -93,7 +93,6 @@ class App:
             **kwargs,
         )
 
-
     # endregion
 
     # region old App
@@ -148,6 +147,8 @@ class App:
 
     # region bot-lib app base
 
+    plugins_required: List[str] = []
+
     def __init__(
         self,
         plugins: List[Type["Plugin"]] = None,
@@ -156,6 +157,11 @@ class App:
     ):
         self._init_app_base(app_data_path, config)
         self._init_plugins(plugins)
+
+        # check if all required plugins are present
+        for plugin in self.plugins_required:
+            if plugin not in self.plugins:
+                raise AttributeError(f"{plugin} plugin is required.")
 
     def _init_plugins(self, plugins: List[Type["Plugin"]]):
         # Initialize plugins from arguments
