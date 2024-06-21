@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 Pathlike = Union[str, Path]
 
 
-class App:
+class AppBase:
     """"""
 
     # region old AppBase
@@ -53,10 +53,12 @@ class App:
 
     # _telegram_bot_config_class: Type[TelegramBotConfig] = TelegramBotConfig
 
-    def _init_app_base(self, app_data_path=None, config: _app_config_class = None):
+    def _init_app_base(
+        self, app_data_path=None, config: _app_config_class = None, **kwargs
+    ):
         self.logger = loguru.logger.bind(component=self.__class__.__name__)
         if config is None:
-            config = self._load_config()
+            config = self._load_config(**kwargs)
         if app_data_path is not None:
             config.app_data_path = Path(app_data_path)
         self.config = config
@@ -154,8 +156,9 @@ class App:
         plugins: List[Type["Plugin"]] = None,
         app_data_path: Pathlike = None,
         config: _app_config_class = None,
+        **kwargs,
     ):
-        self._init_app_base(app_data_path, config)
+        self._init_app_base(app_data_path, config, **kwargs)
         self._init_plugins(plugins)
 
         # check if all required plugins are present
@@ -290,6 +293,8 @@ class App:
 
     # endregion
 
+
+App = AppBase
 
 if __name__ == "__main__":
     app = App()
