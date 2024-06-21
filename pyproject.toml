@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "calmapp"
-version = "0.1.4" # add required_plugins list to specify dependencies
+version = "0.1.5" # ignore extra fields in config
 description = ""
 authors = ["Petr Lavrov <calmmage@gmail.com>"]
 readme = "README.md"

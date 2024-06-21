@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 from typing import Optional
+from pydantic import ConfigDict
 
 load_dotenv()
 
@@ -19,9 +20,7 @@ class DatabaseConfig(BaseSettings):
     public_mongodb_url: Optional[SecretStr] = SecretStr("")
     public_name: str = "app_data"
 
-    model_config = {
-        "env_prefix": "DATABASE_",
-    }
+    model_config = {"env_prefix": "DATABASE_", "extra": "ignore"}
 
 
 DEFAULT_APP_DATA_PATH = "app_data"
@@ -55,3 +54,5 @@ class AppConfig(BaseSettings):
     # todo: add extra {APP}_ prefix to all env vars?
     #  will this work?
     #  "env_prefix": "{APP}_TELEGRAM_BOT_",
+
+    model_config = ConfigDict(extra="ignore")
