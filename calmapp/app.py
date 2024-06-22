@@ -126,24 +126,22 @@ class AppBase:
     # endregion
     # --------------------------------------------- #
 
-    async def _run_with_scheduler(self, bot=None):
+    async def _run_with_scheduler(self, dp=None, bot=None):
         # this seems stupid, but this is a tested working way, so i go with it
         # rework sometime later - probably can just start and not gather
-        if bot is None:
-            await self.scheduler.core.start()
-        else:
-            self.scheduler.core.start()
-            await bot.run()
+        self.scheduler.core.start()
+        if bot is not None:
+            await dp.start_polling(bot)
 
-    def run(self, bot=None):
+    def run(self, dp=None, bot=None):
         if self.config.enable_scheduler:
             self.logger.info("Running with scheduler")
-            asyncio.run(self._run_with_scheduler())
+            asyncio.run(self._run_with_scheduler(dp, bot))
         else:
-            # super().run()
             self.logger.info(f"Starting {self.__class__.__name__}")
-            # asyncio.run(self.bot.run())
-            raise NotImplementedError
+            if bot is not None:
+                raise NotImplementedError("Can't run the app without a bot currently.")
+            asyncio.run(dp.start_polling(bot))
 
     # endregion
 
