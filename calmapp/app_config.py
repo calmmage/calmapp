@@ -6,23 +6,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings
-from typing import Optional
+
+from calmapp.plugins.database_plugin_config import DatabaseConfig
 
 load_dotenv()
-
-
-class DatabaseConfig(BaseSettings):
-    conn_str: Optional[SecretStr] = SecretStr("")
-    name: str = "app_data"
-    private_mongodb_url: Optional[SecretStr] = SecretStr("")
-    private_name: str = "app_data"
-    public_mongodb_url: Optional[SecretStr] = SecretStr("")
-    public_name: str = "app_data"
-
-    model_config = {
-        "env_prefix": "DATABASE_",
-    }
-
 
 DEFAULT_APP_DATA_PATH = "app_data"
 

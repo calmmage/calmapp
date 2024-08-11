@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 class Plugin(abc.ABC):
     name: str = None
 
-    def __init__(self, app: "App", config: "AppConfig"):
+    def __init__(self, app: "App", config: "AppConfig", **kwargs):
         self.app = app
         self.config = config
         # bind logger

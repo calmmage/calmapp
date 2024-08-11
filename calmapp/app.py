@@ -19,7 +19,8 @@ from dotenv import load_dotenv
 
 # from apscheduler.triggers.interval import IntervalTrigger
 # from bot_lib.migration_bot_base.core import DatabaseConfig  # , TelegramBotConfig
-from calmapp.app_config import AppConfig, DatabaseConfig
+from calmapp.app_config import AppConfig
+from calmapp.plugins.database_plugin_config import DatabaseConfig
 
 from typing import TYPE_CHECKING
 
@@ -41,59 +42,13 @@ if TYPE_CHECKING:
 
 Pathlike = Union[str, Path]
 
-
+# todo: rename into AppBase (keep App but mark App as deprecated - add metaclass to notify deprecation?)
 class App:
     """"""
-
-    # region old AppBase
 
     _app_config_class: Type[AppConfig] = AppConfig
     # _telegram_bot_class: Type[TelegramBot] = TelegramBot
     _database_config_class: Type[DatabaseConfig] = DatabaseConfig
-
-    # _telegram_bot_config_class: Type[TelegramBotConfig] = TelegramBotConfig
-
-    def _init_app_base(self, app_data_path=None, config: _app_config_class = None):
-        self.logger = loguru.logger.bind(component=self.__class__.__name__)
-        if config is None:
-            config = self._load_config()
-        if app_data_path is not None:
-            config.app_data_path = Path(app_data_path)
-        self.config = config
-        # todo: instead of initializing db here, initialize it in the database plugin
-        # self.bot = self._telegram_bot_class(config.telegram_bot, app=self)
-        self.logger.info(f"Loaded config: {self.config}")
-
-    @property
-    def db(self):
-        return self.database.db
-
-    @property
-    def app_data_path(self):
-        self.config.app_data_path.mkdir(parents=True, exist_ok=True)
-        return self.config.app_data_path
-
-    @property
-    @typing_extensions.deprecated(
-        "The `data_dir` property is deprecated; use `app_data_path` instead.",
-    )
-    def data_dir(self):
-        return self.app_data_path
-
-    # todo_optional: setter, moving the data to the new dir
-
-    # todo: move to plugins - enable or disable app config?
-    def _load_config(self, **kwargs):
-        load_dotenv()
-        database_config = self._database_config_class(**kwargs)
-        # telegram_bot_config = self._telegram_bot_config_class(**kwargs)
-        return self._app_config_class(
-            database=database_config,
-            # telegram_bot=telegram_bot_config,
-            **kwargs,
-        )
-
-    # endregion
 
     # region old App
 
@@ -121,7 +76,7 @@ class App:
         )
         return chunks
 
-    # endregion
+    # endregion Audio
     # --------------------------------------------- #
 
     async def _run_with_scheduler(self, bot=None):
@@ -143,7 +98,7 @@ class App:
             # asyncio.run(self.bot.run())
             raise NotImplementedError
 
-    # endregion
+    # endregion old App
 
     # region bot-lib app base
 
@@ -242,7 +197,7 @@ class App:
                 pass
         raise AttributeError("None of the GPT plugins are enabled.")
 
-    # endregion
+    # endregion plugin properties
 
     # region base commands
 
@@ -288,7 +243,53 @@ class App:
                 break
             print("App:", self.invoke(input_str))
 
-    # endregion
+    # endregion base commands
+
+    # region old AppBase
+
+    # _telegram_bot_config_class: Type[TelegramBotConfig] = TelegramBotConfig
+
+    def _init_app_base(self, app_data_path=None, config: _app_config_class = None):
+        self.logger = loguru.logger.bind(component=self.__class__.__name__)
+        if config is None:
+            config = self._load_config()
+        if app_data_path is not None:
+            config.app_data_path = Path(app_data_path)
+        self.config = config
+        # todo: instead of initializing db here, initialize it in the database plugin
+        # self.bot = self._telegram_bot_class(config.telegram_bot, app=self)
+        self.logger.info(f"Loaded config: {self.config}")
+
+    @property
+    def db(self):
+        return self.database.db
+
+    @property
+    def app_data_path(self):
+        self.config.app_data_path.mkdir(parents=True, exist_ok=True)
+        return self.config.app_data_path
+
+    @property
+    @typing_extensions.deprecated(
+        "The `data_dir` property is deprecated; use `app_data_path` instead.",
+    )
+    def data_dir(self):
+        return self.app_data_path
+
+    # todo_optional: setter, moving the data to the new dir
+
+    # todo: move to plugins - enable or disable app config?
+    def _load_config(self, **kwargs):
+        load_dotenv()
+        database_config = self._database_config_class(**kwargs)
+        # telegram_bot_config = self._telegram_bot_config_class(**kwargs)
+        return self._app_config_class(
+            database=database_config,
+            # telegram_bot=telegram_bot_config,
+            **kwargs,
+        )
+
+    # endregion old AppBase
 
 
 if __name__ == "__main__":
