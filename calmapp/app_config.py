@@ -1,13 +1,10 @@
 from pathlib import Path
+from typing import Optional, List
 
-# from typing import Optional
-
-# from aiogram.enums import ParseMode
 from dotenv import load_dotenv
+from pydantic import ConfigDict
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings
-from typing import Optional
-from pydantic import ConfigDict
 
 load_dotenv()
 
@@ -26,6 +23,21 @@ class DatabaseConfig(BaseSettings):
 DEFAULT_APP_DATA_PATH = "app_data"
 
 
+class PluginFlags(BaseSettings):
+    enable_gpt_engine: bool = False
+    enable_langchain: bool = False
+    enable_light_llm: bool = False
+    enable_openai: bool = False
+    enable_database: bool = False
+    enable_logging: bool = False
+    enable_message_history: bool = False
+    enable_scheduler: bool = False
+    enable_whisper: bool = False
+
+    class Config:
+        extra = "ignore"
+
+
 class AppConfig(BaseSettings):
     app_data_path: Path = DEFAULT_APP_DATA_PATH
 
@@ -36,15 +48,8 @@ class AppConfig(BaseSettings):
     openai_api_key: SecretStr = SecretStr("")
 
     # Plugin enable flags
-    enable_gpt_engine: bool = False
-    enable_langchain: bool = False
-    enable_light_llm: bool = False
-    enable_openai: bool = False
-    enable_database: bool = False
-    enable_logging: bool = False
-    enable_message_history: bool = False
-    enable_scheduler: bool = False
-    enable_whisper: bool = False
+    plugin_flags: PluginFlags = PluginFlags()
+    plugins: List[str] = []
 
     # Other settings
     # todo: deprecate and use whisper plugin instead

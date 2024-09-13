@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "calmapp"
-version = "0.1.6" # rework app.run - support new style dp.start_polling
+version = "0.2.0" # rework app.run - support new style dp.start_polling
 description = ""
 authors = ["Petr Lavrov <calmmage@gmail.com>"]
 readme = "README.md"
