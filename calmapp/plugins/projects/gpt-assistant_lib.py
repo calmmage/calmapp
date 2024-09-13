@@ -1,7 +1,9 @@
 from aiogram.types import Message
+
 # import asyncio
 from dotenv import load_dotenv
 from langchain.agents import AgentType, initialize_agent
+
 # from langchain_community.agent_toolkits import O365Toolkit
 from gpt_assistant.tools.office365.toolkit import O365Toolkit
 from langchain_openai import OpenAI
@@ -15,10 +17,10 @@ from bot_lib import App, Handler, HandlerDisplayMode
 # from utils.auth import authenticateGoogleUser
 # from googleApi.calendar import Calendar
 
+
 class MyApp(App):
     def __init__(self, plugins, **kwargs):
         super().__init__(plugins=plugins, **kwargs)
-        load_dotenv('.env')
         self.toolkit = O365Toolkit()
         tools = self.toolkit.get_tools()
         llm = OpenAI(temperature=0)
