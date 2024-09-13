@@ -137,7 +137,7 @@ class AppBase:
             asyncio.run(self._run_with_scheduler(dp, bot))
         else:
             self.logger.info(f"Starting {self.__class__.__name__}")
-            if bot is not None:
+            if bot is None:
                 raise NotImplementedError("Can't run the app without a bot currently.")
             asyncio.run(dp.start_polling(bot))
 
