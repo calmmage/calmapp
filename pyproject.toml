@@ -6,7 +6,6 @@ description = ""
 authors = ["Petr Lavrov <calmmage@gmail.com>"]
 readme = "README.md"
 
-# todo: cleanup dependencies to speed up installation and resolving
 [tool.poetry.dependencies]
 python = ">=3.12,<4.0"
 # logging
