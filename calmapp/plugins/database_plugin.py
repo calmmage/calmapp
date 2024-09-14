@@ -24,7 +24,7 @@ class DatabasePlugin(Plugin):
 
             self.logger.info(f"Discovered DATABASE_CONN_STR and connected successfully")
         # private_url = os.getenv('PRIVATE_MONGODB_URL')
-        private_url = self.self.config.private_mongodb_url.get_secret_value()
+        private_url = self.config.private_mongodb_url.get_secret_value()
         if private_url:
             self._private_db = self._connect_db(private_url, self.config.private_name, "private_database")
             self.logger.info(f"Discovered PRIVATE_MONGODB_URL and connected successfully")
