@@ -42,8 +42,8 @@ if TYPE_CHECKING:
 
 Pathlike = Union[str, Path]
 
-# todo: rename into AppBase (keep App but mark App as deprecated - add metaclass to notify deprecation?)
-class App:
+
+class AppBase:
     """"""
 
     _app_config_class: Type[AppConfig] = AppConfig
@@ -79,24 +79,22 @@ class App:
     # endregion Audio
     # --------------------------------------------- #
 
-    async def _run_with_scheduler(self, bot=None):
+    async def _run_with_scheduler(self, dp=None, bot=None):
         # this seems stupid, but this is a tested working way, so i go with it
         # rework sometime later - probably can just start and not gather
-        if bot is None:
-            await self.scheduler.core.start()
-        else:
-            self.scheduler.core.start()
-            await bot.run()
+        self.scheduler.core.start()
+        if bot is not None:
+            await dp.start_polling(bot)
 
-    def run(self, bot=None):
+    def run(self, dp=None, bot=None):
         if self.config.enable_scheduler:
             self.logger.info("Running with scheduler")
-            asyncio.run(self._run_with_scheduler())
+            asyncio.run(self._run_with_scheduler(dp, bot))
         else:
-            # super().run()
             self.logger.info(f"Starting {self.__class__.__name__}")
-            # asyncio.run(self.bot.run())
-            raise NotImplementedError
+            if bot is None:
+                raise NotImplementedError("Can't run the app without a bot currently.")
+            asyncio.run(dp.start_polling(bot))
 
     # endregion old App
 
@@ -109,43 +107,50 @@ class App:
         plugins: List[Type["Plugin"]] = None,
         app_data_path: Pathlike = None,
         config: _app_config_class = None,
+        **kwargs,
     ):
-        self._init_app_base(app_data_path, config)
-        self._init_plugins(plugins)
+        self.plugins = {}
+        self._init_app_base(app_data_path, config, **kwargs)
+        self._init_plugins(plugins, **kwargs)
 
         # check if all required plugins are present
         for plugin in self.plugins_required:
             if plugin not in self.plugins:
                 raise AttributeError(f"{plugin} plugin is required.")
 
-    def _init_plugins(self, plugins: List[Type["Plugin"]]):
-        # Initialize plugins from arguments
-        if plugins is None:
-            plugins = []
-        self.plugins = {
-            plugin.name: plugin(app=self, config=self.config) for plugin in plugins
-        }
+    # region Plugins
 
-        # Initialize plugins from flags
-        plugin_flags = {
-            "gpt_engine": self.config.enable_gpt_engine,
-            "langchain": self.config.enable_langchain,
-            "light_llm": self.config.enable_light_llm,
-            "openai": self.config.enable_openai,
-            "database": self.config.enable_database,
-            "logging": self.config.enable_logging,
-            "message_history": self.config.enable_message_history,
-            "scheduler": self.config.enable_scheduler,
-            "whisper": self.config.enable_whisper,
-        }
+    def _init_plugins(self, plugins: List[Union[Type["Plugin"], str]] = None, **kwargs):
+        # Step 1: Initialize plugins from arguments
         from calmapp.plugins import available_plugins
 
-        for plugin_key, enabled in plugin_flags.items():
-            if enabled and plugin_key not in self.plugins:
-                plugin_class = available_plugins[plugin_key]
-                self.plugins[plugin_key] = plugin_class(app=self, config=self.config)
+        if plugins is None:
+            plugins = []
 
-    # region plugin properties
+        plugin_names = set()
+
+        # Step 1: add plugins from arguments
+        for plugin in plugins:
+            if isinstance(plugin, str):
+                plugin_names.add(plugin)
+            else:
+                available_plugins[plugin.name] = plugin
+                plugin_names.add(plugin.name)
+
+        # Step 2: add plugins from config list
+        for plugin in self.config.plugins:
+            plugin_names.add(plugin)
+
+        # Step 3: Add plugins enabled in the config by flags
+        enabled = self.config.plugin_flags.model_dump()
+        for plugin in enabled:
+            if enabled[plugin]:
+                plugin_names.add(plugin)
+
+        for plugin in plugin_names:
+            plugin_class = available_plugins[plugin]
+            self.plugins[plugin] = plugin_class(app=self, **kwargs)
+
     def get_plugin(self, plugin_key: str) -> "Plugin":
         if plugin_key not in self.plugins:
             from calmapp.plugins import available_plugins
@@ -197,7 +202,20 @@ class App:
                 pass
         raise AttributeError("None of the GPT plugins are enabled.")
 
-    # endregion plugin properties
+    def __getattr__(self, name):
+        # Check if the attribute exists in the AppBase instance
+        if name in self.__dict__:
+            return self.__dict__[name]
+
+        # Check if the attribute exists in any of the plugins
+        for plugin in self.plugins.values():
+            if hasattr(plugin, name):
+                return getattr(plugin, name)
+
+        # If the attribute is not found, raise an AttributeError
+        raise AttributeError(f"'{self.__class__.__name__}' object and its plugins have no attribute '{name}'")
+
+    # endregion Plugins
 
     # region base commands
 
@@ -291,6 +309,8 @@ class App:
 
     # endregion old AppBase
 
+
+App = AppBase
 
 if __name__ == "__main__":
     app = App()
