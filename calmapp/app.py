@@ -1,28 +1,17 @@
 import asyncio
 from collections import defaultdict
 from pathlib import Path
-
-from typing import List, Type
-from typing import Union
+from typing import List, Type, TYPE_CHECKING, Union
 
 import loguru
 import typing_extensions
-
-# from bot_lib.migration_bot_base.core.telegram_bot import TelegramBot
-from calmlib.beta.utils import (
-    DEFAULT_PERIOD,
-    DEFAULT_BUFFER,
-    split_and_transcribe_audio,
-    Audio,
-)
+from calmlib.utils.audio_utils import DEFAULT_PERIOD, DEFAULT_BUFFER, split_and_transcribe_audio, Audio
 from dotenv import load_dotenv
 
 # from apscheduler.triggers.interval import IntervalTrigger
-# from bot_lib.migration_bot_base.core import DatabaseConfig  # , TelegramBotConfig
 from calmapp.app_config import AppConfig
 from calmapp.plugins.database_plugin_config import DatabaseConfig
 
-from typing import TYPE_CHECKING
 
 # from bot_lib.migration_bot_base.core.app import App as OldApp
 if TYPE_CHECKING:
@@ -34,7 +23,6 @@ if TYPE_CHECKING:
         OpenAIPlugin,
         DatabasePlugin,
         LangChainPlugin,
-        GptEnginePlugin,
         GptPlugin,
         LightLLMPlugin,
         LoggingPlugin,

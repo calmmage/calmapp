@@ -1,41 +1,53 @@
 [tool.poetry]
 name = "calmapp"
-version = "0.2.1" # rework app.run - support new style dp.start_polling
+version = "0.2.2" # rework pyproject.toml for faster builds
+
 description = ""
 authors = ["Petr Lavrov <calmmage@gmail.com>"]
 readme = "README.md"
 
+# todo: cleanup dependencies to speed up installation and resolving
 [tool.poetry.dependencies]
-python = ">=3.8.1,<4.0"
-# for stability, use frozen-app-name branch
-calmlib = { git = "https://github.com/calmmage/calmlib.git", branch = "main" }
-#calmmage = { git = "https://github.com/calmmage/calmmage.git", branch = "main" }
-pytest = "*"
+python = ">=3.12,<4.0"
 # logging
-loguru = "*"
-toml = "*"
+loguru = ">=0.7"
+# for parsing version
+toml = ">=0.10"
 # be wary, langchain-pydantic compatibility: https://python.langchain.com/v0.1/docs/guides/development/pydantic_compatibility/
 pydantic = ">=2"
 pydantic-settings = ">=2"
+# personal libraries
+calmlib = { git = "https://github.com/calmmage/calmlib.git", branch = "main" }
 
+[tool.poetry.group.extras.dependencies]
+# dependencies for extra features
+#pydub = ">=0.25"
+#openai = ">=1.45"
+#apscheduler = ">=4"
+#tiktoken = ">=0.7"
+#aiolimiter = ">=1.1"
+#langchain-anthropic = ">=0.2"
+#langchain-openai = ">=0.2"
+#langchain = ">=0.3"
+
+[tool.poetry.group.test.dependencies]
+pytest = ">=6"
+
+[tool.poetry.group.docs.dependencies]
+#mkdocs = ">=1.6"
 
 [tool.poetry.group.dev.dependencies]
+# dev / research utils
 jupyter = ">=1.0.0"
-tqdm = "*"
+tqdm = ">=4"
 # pandas = "2.1.0"
-black = "*"
-pre-commit = "*"
-aiogram = "*"
-streamlit = "*"
-fastapi = "*"
-openai = "*"
-apscheduler = "*"
-pydub = "*"
-tiktoken = "*"
-aiolimiter = "*"
-langchain-anthropic = "*"
-langchain-openai = "*"
-langchain = "*"
+black = ">=24"
+pre-commit = ">=3.8"
+
+# my frequently used libs - exclude for now?
+#aiogram = "*"
+#streamlit = "*"
+#fastapi = "*"
 
 [build-system]
 requires = ["poetry-core"]
