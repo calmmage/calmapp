@@ -5,7 +5,6 @@ from typing import List, Type, TYPE_CHECKING, Union
 
 import loguru
 import typing_extensions
-from calmlib.utils.audio_utils import DEFAULT_PERIOD, DEFAULT_BUFFER, split_and_transcribe_audio, Audio
 from dotenv import load_dotenv
 
 # from apscheduler.triggers.interval import IntervalTrigger
@@ -27,6 +26,7 @@ if TYPE_CHECKING:
         LightLLMPlugin,
         LoggingPlugin,
     )
+    from calmlib.utils.audio_utils import Audio
 
 Pathlike = Union[str, Path]
 
@@ -48,11 +48,17 @@ class AppBase:
     # todo: move to plugins - whisper
     async def parse_audio(
         self,
-        audio: Audio,
-        period: int = DEFAULT_PERIOD,
-        buffer: int = DEFAULT_BUFFER,
+        audio: "Audio",
+        period: int = None,
+        buffer: int = None,
         parallel: bool = None,
     ):
+        from calmlib.utils.audio_utils import DEFAULT_PERIOD, DEFAULT_BUFFER, split_and_transcribe_audio
+
+        if period is None:
+            period = DEFAULT_PERIOD
+        if buffer is None:
+            buffer = DEFAULT_BUFFER
         if parallel is None:
             parallel = self.config.process_audio_in_parallel
         chunks = await split_and_transcribe_audio(
@@ -75,7 +81,7 @@ class AppBase:
             await dp.start_polling(bot)
 
     def run(self, dp=None, bot=None):
-        if self.config.enable_scheduler:
+        if self.config.plugin_flags.enable_scheduler:
             self.logger.info("Running with scheduler")
             asyncio.run(self._run_with_scheduler(dp, bot))
         else:

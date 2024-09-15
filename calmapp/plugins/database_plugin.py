@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 
-import mongoengine
 
 from calmapp.plugins.plugin import Plugin
 from .database_plugin_config import DatabaseConfig
@@ -41,6 +40,8 @@ class DatabasePlugin(Plugin):
             self._public_db = None
 
     def _connect_db(self, conn_str, db_name, alias="default"):
+        import mongoengine
+
         try:
             # Attempt to retrieve an existing connection by alias
             connection = mongoengine.get_connection(alias)
