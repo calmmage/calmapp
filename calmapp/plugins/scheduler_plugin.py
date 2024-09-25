@@ -4,14 +4,13 @@ from calmapp.plugins.plugin import Plugin
 
 if TYPE_CHECKING:
     from calmapp.app import App
-    from calmapp.app_config import AppConfig
 
 
 class SchedulerPlugin(Plugin):
     name = "scheduler"
 
-    def __init__(self, app: "App", config: "AppConfig"):
-        super().__init__(app, config)
+    def __init__(self, app: "App", **kwargs):
+        super().__init__(app, **kwargs)
 
         from apscheduler.schedulers.asyncio import AsyncIOScheduler
 

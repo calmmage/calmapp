@@ -5,6 +5,7 @@ from typing import List, Type, TYPE_CHECKING, Union
 
 import loguru
 import typing_extensions
+from calmlib.utils import ltrim
 from dotenv import load_dotenv
 
 # from apscheduler.triggers.interval import IntervalTrigger
@@ -137,9 +138,9 @@ class AppBase:
 
         # Step 3: Add plugins enabled in the config by flags
         enabled = self.config.plugin_flags.model_dump()
-        for plugin in enabled:
-            if enabled[plugin]:
-                plugin_names.add(plugin)
+        for flag_name, flag_value in enabled.items():
+            if flag_value:
+                plugin_names.add(ltrim(flag_name, "enable_"))
 
         for plugin in plugin_names:
             plugin_class = available_plugins[plugin]

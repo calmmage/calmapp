@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "calmapp"
-version = "0.2.3" # rework pyproject.toml for faster builds
+version = "0.2.4" # bugfix
 
 description = ""
 authors = ["Petr Lavrov <calmmage@gmail.com>"]
